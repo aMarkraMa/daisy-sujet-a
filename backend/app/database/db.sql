@@ -53,6 +53,7 @@ CREATE TABLE outbox_events (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     session_id uuid NOT NULL,
     partner_id text NOT NULL,
+    partner_session_id text NOT NULL,
         status text NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'processed', 'blocked')),
     attempts integer NOT NULL DEFAULT 0 CHECK (attempts >= 0),
