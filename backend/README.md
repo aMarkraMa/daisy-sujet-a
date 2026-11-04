@@ -1,3 +1,30 @@
+# PARTIE 1 — Questions et réponses
+
+## 1. 
+
+ Deux clients réservent la dernière place au même instant, l'un dans Daisy, l'autre chez le partenaire. Décris précisément ce qui se passe dans ton implémentation. Si ton système peut surréserver, dis-le et explique dans quelles conditions.
+
+**Réponse :** Pour cet exercice, je suppose qu'Artisia doit d'abord demander à Daisy les places correspondantes et réussir à les verrouiller avant de confirmer une réservation. Dans ce cas, il est théoriquement possible de garantir strictement l'absence de surréservation.
+
+En revanche, si Artisia utilise un stock indépendant sans vérifier auprès de Daisy, c'est-à-dire sans source de vérité (SoT), une seule des deux plateformes peut obtenir la dernière place, mais les deux affichent une réservation réussie, ce qui entraîne une surréservation. Par exemple, lorsque l'événement `booking.created` est transmis à Daisy, le worker tente de traiter l'événement webhook, constate qu'il n'y a plus de place et finit par renvoyer une erreur `409`. Mon code n'intercepte pas cette exception. Le statut de cet événement webhook reste donc `pending`, alors que les réservations sont affichées comme confirmées des deux côtés.
+
+## 2. 
+ Le partenaire est injoignable pendant 20 minutes. Que voit l'artisan pendant ce temps ? Et au retour du service, comment rattrapes-tu l'écart ?
+
+**Réponse :** Grâce au pattern Outbox, si l'API Artisia est inaccessible, nos tâches de synchronisation s'accumulent dans la table des événements Outbox. La synchronisation peut reprendre une fois l'API Artisia de nouveau disponible.
+
+## 3. 
+Le même webhook arrive trois fois. Comment tu t'en protèges, et à quel coût ?
+
+**Réponse :** Tout d'abord, dans la table des événements webhook, nous avons une clé primaire unique composée de `partner_id` et de `event_id`, qui garantit l'unicité de chaque webhook. Ainsi, même si le même webhook arrive trois fois, un seul est enregistré dans cette table et un seul est finalement traité.
+
+De plus, dans la table des réservations, nous avons une clé unique composée de `source` et de `source_ref`, qui garantit également l'unicité de chaque réservation. Même si tous les doublons sont déjà traités au niveau des webhooks, j'ai tout de même conservé la logique de déduplication des réservations. Le coût actuel est de devoir maintenir ces données et conserver le payload des événements.
+
+## 4. 
+Tu dois choisir entre « ne jamais surréserver » et « ne jamais bloquer une vente ». Tu choisis quoi, et qu'est-ce que tu dis à l'artisan qui subit l'autre côté du compromis ?
+
+**Réponse :** Dans un contexte de développement réel, je préférerais vendre moins plutôt que de surréserver. Je pense que le coût d'une surréservation est supérieur à celui d'une vente manquée. Je l'expliquerais ainsi : lorsque la plateforme partenaire est inaccessible, nous ne pouvons pas garantir que le nombre de places restantes affiché par le système correspond toujours à la disponibilité réelle. Dans cette situation, nous préférons suspendre temporairement les réservations concernées plutôt que de risquer de vendre deux fois la même place.
+
 # PARTIE 2 — Socle commun
 
 ## 1. Mon journal de bord
